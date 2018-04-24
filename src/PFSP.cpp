@@ -80,8 +80,8 @@ double PFSP::Evaluate(int * genes)
 	int machine;
     int prev_machine=0;
     
-	//int first_gene=genes[0];
-	int first_gene = identityPerm[genes[0]]; // for dyn
+	int first_gene=genes[0];
+//	int first_gene = identityPerm[genes[0]]; // for dyn
     m_timeTable[0]=m_processingtimes[0][first_gene];
 	for (j=1;j<m_machines;j++)
 	{
@@ -91,8 +91,8 @@ double PFSP::Evaluate(int * genes)
 	double fitness=m_timeTable[m_machines-1];
 	for (z=1;z<m_jobs;z++)
 	{
-		//job=genes[z];
-		job = identityPerm[genes[z]]; // for dyn
+		job=genes[z];
+//		job = identityPerm[genes[z]]; // for dyn
 
 		//machine 0 is always incremental, so:
 		m_timeTable[0]+=m_processingtimes[0][job];
