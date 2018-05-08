@@ -44,6 +44,11 @@ public:
 	 * Simulates a new individual sampling the probabilistic model.
 	 */
     int Sample(CPopulation * population, int num_samples, int inverse, PBP * problem);
+
+	/*
+	* Simulates a new individual sampling the probabilistic model.
+	*/
+	void Sample(int *permutation);
     
 	/*
      * Calculates ThetaParameters average value.
@@ -53,13 +58,15 @@ public:
 	/*
 	 * Calculates the probability of the individual given the probabilistic model.
 	 */
-	double Probability(int * individual);
+	float Probability(int * individual);
     
     /*
      * This method updates the best solution of the optimization processes if the most probable solutions
      * are better than those solutions obtained by the population.
      */
     void PostProcesses();
+
+	void printWeigths();
     
 private:
     
@@ -122,7 +129,7 @@ private:
 	/*
      * Parameter vector v
      */
-	double * m_weights;
+	float * m_weights;
     	
     /* 
      * Euclidean norm of the weights.
@@ -162,6 +169,7 @@ private:
     double * w;
 	int * pp;
     double **aux;
+	int ** m_samples;
     double * newgamma;
     double * sr2;
     int * m_last;

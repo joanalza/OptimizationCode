@@ -22,6 +22,7 @@
 #include "Tools.h"
 #include "Population.h"
 #include "RankingModel.h"
+#include "PlackettLuce.h"
 
 using std::istream;
 using std::ostream;
@@ -93,6 +94,9 @@ public:
      * Evaluates the inverse of the samples solutions.
      */
     int m_inverse;
+
+	// Path of the progress of the EDA.
+	string m_resultsPath;
     
     /*
      * The population

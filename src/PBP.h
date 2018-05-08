@@ -36,7 +36,7 @@ public:
 	vector<int*> identityPermutations;
 	int nChanges, pbsize;
 	double* identityPermutationChanges; // percentage of the maxFes at which a change happens
-	int nextChangeIndex = 0;
+	int nextChangeIndex;
 	string dynProfilePath;
 
 	/*
@@ -73,6 +73,8 @@ public:
 	virtual void setIdentityPermutationChanges(string dynamicfilename);
 
 	virtual bool changeIdentityPermutation(int fes, int maxfes);
+
+	virtual void setPbsize(int size);
 
 private:
     

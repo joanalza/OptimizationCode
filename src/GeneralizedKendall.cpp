@@ -13,6 +13,9 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <float.h>
+#include <climits>
 using std::cerr;
 using std::cout;
 using std::endl;

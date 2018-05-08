@@ -11,6 +11,7 @@
 #include "MallowsModel.h"
 #include "Cayley.h"
 #include "Kendall.h"
+#include "PlackettLuce.h"
 #include "GeneralizedMallowsModel.h"
 
 /*
@@ -19,29 +20,28 @@
 RankingEDA::RankingEDA(PBP * problem, int problem_size, long int max_evaluations, char* model_type, char* metric_type, int inverse)
 {
     //1. standard initializations
-    m_problem=problem;
-    m_problem_size=problem_size;
-    m_max_evaluations=max_evaluations;
-    m_evaluations=0;
-    m_convergence_evaluations=0;
-    m_best= new CIndividual(problem_size);
+    m_problem = problem;
+	m_problem_size = problem_size;
+    m_max_evaluations = max_evaluations;
+    m_evaluations = 0;
+    m_convergence_evaluations = 0;
+    m_best = new CIndividual(problem_size);
 	//long temp1 = MIN_LONG_INTEGER;
 	//cout << "temp0" << temp1 << endl;
 	m_best->SetValue(LONG_MIN);
 	//cout << "initial m_best value: " << m_best->Value() << endl;
-    m_pop_size=m_problem_size*10;
-    m_sel_size=m_problem_size;
-    m_offspring_size= m_pop_size-1;
-    memcpy(m_metric_type,metric_type,sizeof(char)*10);
-    memcpy(m_model_type,model_type,sizeof(char)*10);
+    m_pop_size = m_problem_size * 10;
+    m_sel_size = m_problem_size;
+    m_offspring_size = m_pop_size;
+    memcpy(m_metric_type, metric_type, sizeof(char)*10);
+    memcpy(m_model_type, model_type, sizeof(char)*10);
     
-    m_inverse=inverse;
+    m_inverse = inverse;
     
     //2. initialize the population
-    m_population= new CPopulation(m_pop_size, m_offspring_size,m_problem_size);
-    int * genes= new int[m_problem_size];
-    for(int i=0;i<m_pop_size;i++)
-	{
+    m_population = new CPopulation(m_pop_size, m_offspring_size, m_problem_size);
+    int *genes = new int[m_problem_size];
+    for(int i=0; i<m_pop_size; i++){
 		//Create random individual
 		GenerateRandomPermutation(genes,m_problem_size);
         if (m_inverse)
@@ -52,6 +52,10 @@ RankingEDA::RankingEDA(PBP * problem, int problem_size, long int max_evaluations
     }
     
     m_population->SortPopulation(0);
+
+	m_best->SetGenes(m_population->m_individuals[0]->Genes());
+	m_best->SetValue(m_population->m_individuals[0]->Value());
+
     //cout<<""<<m_population->m_individuals[0]->Value()<<" , "<<m_evaluations<<" , "<<m_max_evaluations-m_evaluations<<endl;
     delete [] genes;
     
@@ -59,14 +63,13 @@ RankingEDA::RankingEDA(PBP * problem, int problem_size, long int max_evaluations
     //3. Build model structures
     if (((string)model_type)=="M"){
         m_model=new CMallowsModel(m_problem_size, m_sel_size, metric_type);
-    
-    }
-    else if (((string)model_type)=="GM")
-    {
+    }else if (((string)model_type)=="GM"){
         m_model=new CGeneralizedMallowsModel(m_problem_size, m_sel_size, metric_type);
+    }else if (((string)model_type)=="PL"){
+        m_model=new CPlackettLuceModel(m_problem_size, m_sel_size);
     }
  
-    
+	m_resultsPath = "results/progress-GM.csv";
     
 }
 
@@ -163,6 +166,7 @@ void RankingEDA::MetricSuitability_Experiment(char * results_file){
 
 int RankingEDA::Run(){
 	string results1 = "FileName \t Solution \tFitness \t err \t FEs \n";
+	string resultsCsv = "gen,fes,bestFit,avgFit,bestFound,change,changeGen,bestPerChange\n";
 	/*long temp = LONG_MIN;
 	cout << "temp1" << temp << endl;
 	m_best->SetValue(temp);*/
@@ -171,13 +175,17 @@ int RankingEDA::Run(){
 
    // cout<<"Running..."<<endl;
     //variable initializations.
-    int i;
-    long int newScore;
+    int i, iChange = 1;
+    long int newScore = m_population->m_individuals[0]->Value();
+	long int lastScore;
     int * genes= new int[m_problem_size];
 
-    int iterations=1;
-    float rate=0.001;
+    int iterations = 1, changeGen = 1;
+    float rate=0.001, average;
 
+	CIndividual *bestChange = new CIndividual(m_problem_size);
+	bestChange->SetGenes(m_population->m_individuals[0]->Genes());
+	bestChange->SetValue(m_population->m_individuals[0]->Value());
 
 
     //EDA iteration. Stopping criterion is the maximum number of evaluations performed
@@ -188,27 +196,59 @@ int RankingEDA::Run(){
 		if (hasChangedOccured) {
 			// Re-evaluate population fitness
 			for (int i = 0; i<m_pop_size; i++) {
-				m_population->SetToPopulation(m_population->m_individuals[i]->Genes(),i, m_problem->Evaluate(m_population->m_individuals[i]->Genes()));
+				m_population->SetToPopulation(m_population->m_individuals[i]->Genes(), i, m_problem->Evaluate(m_population->m_individuals[i]->Genes()));
 
 			}
+			iChange++;
+			changeGen = 1;
 
 			m_population->SortPopulation(1);
 			
-			m_best->SetGenes(m_population->m_individuals[0]->Genes());
-			m_best->SetValue(m_population->m_individuals[0]->Value());
+//			m_best->SetGenes(m_population->m_individuals[0]->Genes());
+//			m_best->SetValue(m_population->m_individuals[0]->Value());
 
+			bestChange->SetGenes(m_population->m_individuals[0]->Genes());
+			bestChange->SetValue(m_population->m_individuals[0]->Value());
+
+		}
+		//average of the population
+		average = m_population->AverageFitnessPopulation(m_pop_size);
+
+		cout << "POPULATION:" << endl;
+		m_population->Print();
+
+		//results1 += iterations + "," + m_evaluations + "," +newScore + "," + average + "," + m_best->Value() + "," iChange + "," + changeGen + "\n";
+		if (((string)m_model_type) == "PL") {
+			resultsCsv += to_string(static_cast<long long>(iterations)) + "," + to_string(static_cast<long long>(m_evaluations)) + "," +
+				std::to_string(static_cast<long double>((-1) * newScore)) + "," +
+				std::to_string(static_cast<long double>((-1) * average)) + "," +
+				std::to_string(static_cast<long double>((-1) * m_best->Value())) + "," +
+				to_string(static_cast<long long>(iChange)) + "," +
+				to_string(static_cast<long long>(changeGen)) + "," +
+				std::to_string(static_cast<long double>((-1) * bestChange->Value())) + "\n";
 		}
 
         //learn model
+		cout << "LEARNING" << endl;
         m_model->Learn(m_population, m_sel_size);
 
+		/*if (((string)m_model_type) == "PL") {
+			((CPlackettLuceModel*)m_model)->printWeigths();
+		}*/
+
         //sample the model.
-        for (i=0;i< m_offspring_size && m_evaluations<m_max_evaluations;i++){
+		cout << "SAMPLING" << endl;
+        for (i=0; i< m_offspring_size && m_evaluations<m_max_evaluations; i++){
             //distance at which the sampled solution is from the consensus ranking.
             
             
             m_model->Sample(genes);
-            
+			/*PrintArray(genes, m_problem_size, "SAMPLE: ");
+			if (isPermutation(genes, m_problem_size)) {
+				cout << "TRUE" <<endl;
+			}else {
+				cout << "FALSE" << endl;
+			}*/
            if (m_inverse)
                 m_population->AddToPopulation(genes, i, m_problem->EvaluateInv(genes));
             else
@@ -221,13 +261,15 @@ int RankingEDA::Run(){
         m_population->SortPopulation(1);
 
 
-
-
         //update indicators
-        newScore=m_population->m_individuals[0]->Value();
-        float modification=0;
-        if (newScore>m_best->Value())
-        {
+		lastScore = newScore;
+        newScore = m_population->m_individuals[0]->Value();
+        float modification = 0;
+		if ( newScore > lastScore) {
+			bestChange->SetGenes(m_population->m_individuals[0]->Genes());
+			bestChange->SetValue(m_population->m_individuals[0]->Value());
+		}
+        if (newScore > m_best->Value()){
 			//results1 = "./test-output/" + "\t" + std::to_string(static_cast<long double>(newScore)) + "\t" + "0" + "\t" + to_string(static_cast<long long>(m_evaluations)) + "\n"; // ##C++0x
 			cout << m_evaluations << "; " << newScore << endl;
 
@@ -235,33 +277,35 @@ int RankingEDA::Run(){
             m_best->SetGenes(m_population->m_individuals[0]->Genes());
             m_best->SetValue(newScore);
             m_convergence_evaluations=m_evaluations;
-          /* if (((string)m_model_type)=="M")
-                cout<<""<<m_population->m_individuals[0]->Value()<<" , "<<m_evaluations<<" , "<<m_max_evaluations-m_evaluations<<"  Theta. "<<((CMallowsModel*)m_model)->m_distance_model->m_theta_parameter<<" lower: "<<((CMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound<<endl;
-
-            else
-                cout<<""<<m_population->m_individuals[0]->Value()<<" , "<<m_evaluations<<" , "<<m_max_evaluations-m_evaluations<<"  Thetas. "<<((CGeneralizedMallowsModel*)m_model)->m_distance_model->m_theta_parameters[0]<<" lower: "<<((CGeneralizedMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound<<endl;
-        */
-           modification=-rate;
-        }
-        else{
-            modification=rate;
+           modification = -rate;
+        }else{
+            modification = rate;
         }
     
+
         if (((string)m_model_type)=="M"){
-            ((CMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound= ((CMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound+modification;
-            if (((CMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound<0.001)
-                ((CMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound=0.001;
-        }
-        else{
-            ((CGeneralizedMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound= ((CGeneralizedMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound+modification;
-            if (((CGeneralizedMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound<0.001)
-            ((CGeneralizedMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound=0.001;
+            ((CMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound = ((CMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound+modification;
+            if (((CMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound < 0.001)
+                ((CMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound = 0.001;
+        }else if (((string)m_model_type) == "GM") {
+            ((CGeneralizedMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound = ((CGeneralizedMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound + modification;
+            if (((CGeneralizedMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound < 0.001)
+            ((CGeneralizedMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound = 0.001;
         }
        
 		//cout << "m_evaluations: " << m_evaluations << "m_best: " << m_best->Value() << "newScore: " << newScore  <<   endl;
         iterations++;
+		changeGen++;
 
     }
+
+	ofstream myfile1;
+	myfile1.open(m_resultsPath);
+	//	myfile1 << results1;
+	//	cout << results << endl;
+	myfile1 << resultsCsv;
+	myfile1.close();
+
     delete [] genes;
     return 0;
 }

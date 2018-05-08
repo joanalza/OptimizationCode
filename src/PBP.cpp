@@ -8,13 +8,14 @@
  */
 
 #include "PBP.h"
+#include "Tools.h"
 
 /*
  * The constructor.
  */
 PBP::PBP()
 {
-	
+	nextChangeIndex = 0;
 }
 
 /*
@@ -22,7 +23,9 @@ PBP::PBP()
  */
 PBP::~PBP()
 {
-
+	delete[] identityPerm;
+	delete[] identityPermutationChanges ;
+	delete[] m_aux;
 }
 
 
@@ -30,6 +33,7 @@ void PBP::setIdentityPermutationChanges(string dynamicfilename) {
 	
 	//cout << "dynProfilePath" << dynamicfilename << endl;
 	//cout << "dynProfilePath2" << dynamicfilename.c_str() << endl;
+
 	std::ifstream infile(dynamicfilename.c_str());
 	std::string line;
 	int countlines = 0;
@@ -43,8 +47,7 @@ void PBP::setIdentityPermutationChanges(string dynamicfilename) {
 			stringstream(line) >> nChanges;
 			identityPermutationChanges = new double[nChanges];
 			//identityPermutations = new vector<int*>();
-		}
-		else if (countlines == 1) {
+		/*}else if (countlines == 1) {
 				//sscanf(line.c_str(), "%d", &pbsize);
 				stringstream(line) >> pbsize;
 				int* temp_array = new int[pbsize];
@@ -52,14 +55,14 @@ void PBP::setIdentityPermutationChanges(string dynamicfilename) {
 					temp_array[i] = i;
 				}
 				identityPerm = temp_array;
-			}
-		else{
+				delete[] temp_array;*/
+		}else{
 			std::string delimiter = ";";
 			int point1 = line.find(delimiter);
 			std::string part0 = line.substr(0, point1);
 			std::string part1 = line.substr(point1+1,line.length());
 			//sscanf(part0.c_str(), "%d", &identityPermutationChanges[countlines - 2]);
-			stringstream(part0) >> identityPermutationChanges[countlines - 2];
+			stringstream(part0) >> identityPermutationChanges[countlines - 1];
 			size_t pos = 0;
 			std::string delimiter2 = ",";
 			std::string token;
@@ -80,18 +83,22 @@ void PBP::setIdentityPermutationChanges(string dynamicfilename) {
 			}*/
 			//cout << "remaining: " << part1 << endl;
 			identityPermutations.push_back(temparray);
-
-
 		}
 		//cout << "line" << line << endl;
 		countlines++;
-	
 	}
 
-	
+	// Initialize identity permutation
+	identityPerm = new int[pbsize];
+	for (int i = 0; i < pbsize; i++) {
+		identityPerm[i] = i;
+	}
 
 }
 
+void PBP::setPbsize(int size) {
+	this->pbsize = size;
+}
 
 bool PBP::changeIdentityPermutation(int fes, int maxfes) {
 	//    	System.out.println("fes: "+fes+" - maxfes: "+maxfes);
@@ -115,6 +122,7 @@ bool PBP::changeIdentityPermutation(int fes, int maxfes) {
 			cout << identityPermutations[nextChangeIndex] << endl;*/
 			identityPerm = identityPermutations[nextChangeIndex];
 			nextChangeIndex++;
+			PrintArray(identityPerm, pbsize, "Identity: ");
 			//    			System.out.println("CHANGE OF IDENTITY PERMUTATION: "+ArrayUtils.tableToString(this.identityPerm));
 			hasChangedOccured = true;
 		}

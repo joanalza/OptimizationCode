@@ -23,11 +23,11 @@ CPlackettLuceModel::CPlackettLuceModel(int problem_size, int sel_size)
     
     m_MM_iterations=10000;
 
-	m_weights= new double[m_problem_size];
+	m_weights= new float[m_problem_size];
     m_mostProbable= new CIndividual(m_problem_size);
 
     
-    int aux1[m_problem_size];
+    int *aux1 = new int[m_problem_size];
     for (int i=0;i<m_problem_size;i++)
         aux1[i]=i;
     m_mostProbable->SetGenes(aux1);
@@ -40,17 +40,17 @@ CPlackettLuceModel::CPlackettLuceModel(int problem_size, int sel_size)
     distribution= new double[m_problem_size];
     objects= new int[m_problem_size];
     m_last= new int[m_problem_size];
-    m_sample_size_huge=1000000;
-    m_huge_sample= new int*[m_sample_size_huge];
+    m_sample_size_huge= m_samples_size * 10; //1000000;
+    /*m_huge_sample= new int*[m_sample_size_huge];
     for (int i=0;i<m_sample_size_huge;i++){
         m_huge_sample[i]=new int[m_problem_size];
-    }
+    }*/
 
         //create learning structures.
         m_M = m_problem_size;
 
-        m_N = m_sample_size_huge; //number of rankings in the population.
-//        m_N = m_samples_size; //number of rankings in the population.
+//        m_N = m_sample_size_huge; //number of rankings in the population.
+        m_N = m_samples_size; //number of rankings in the population.
         m_P = m_problem_size;
     
         r2 = new double*[m_M];
@@ -89,10 +89,10 @@ CPlackettLuceModel::~CPlackettLuceModel()
 	delete [] m_weights;
     delete m_mostProbable;
     
-    for (int i=0;i<m_sample_size_huge;i++){
+    /*for (int i=0;i<m_sample_size_huge;i++){
         delete [] m_huge_sample[i];
     }
-    delete [] m_huge_sample;
+    delete [] m_huge_sample;*/
     
     delete [] m_last;
     delete [] distribution;
@@ -160,6 +160,7 @@ double norm(double * values, int size)
 
 bool CPlackettLuceModel::Learn(CPopulation * population, int size)
 {
+
     bool result=LearnMM(population,size);
 
     return result;
@@ -188,7 +189,7 @@ double * CPlackettLuceModel::Learn_fromBoltzmann(int ** search_space, double * b
  */
 void CPlackettLuceModel::Sample_BoltzmannDistribution(int ** search_space, double * distribution, int size, int sample_size){
 
-    int samples_indices[size];
+    int* samples_indices = new int[size];
 
     for (int i=0;i<size;i++) samples_indices[i]=0;
     
@@ -211,12 +212,12 @@ void CPlackettLuceModel::Sample_BoltzmannDistribution(int ** search_space, doubl
     
     int sampled_permus=0;
     
-    for (int i=0;i<size;i++){
+    /*for (int i=0;i<size;i++){
         for (int j=0;j<samples_indices[i];j++){
             memcpy(m_huge_sample[sampled_permus],search_space[i],sizeof(int)*m_problem_size);
             sampled_permus++;
         }
-    }
+    }*/
 }
 
 /*
@@ -241,14 +242,14 @@ bool CPlackettLuceModel::LearnMM_fromBoltzmann(int ** search_space, double * bol
     //extract individuals from population
     for (i = 0; i < m_N-1; i++)
     {
-        individua = m_huge_sample[i];
+        /*individua = m_huge_sample[i];
         for (j = 0; j < m_M; j++)
         {
             //we consider that individuals in the population have an ordering description
             //and these matrix consider ordering description of the solutions.
             f[j][i]=individua[j];
             r[individua[j]][i]= j + m_P*i;
-        }
+        }*/
     }
     
     
@@ -415,7 +416,7 @@ bool CPlackettLuceModel::LearnMM(CPopulation * population, int sel_total)
 	//cout<<"Starting MM algorithm...."<<endl;
 	while(m_norm>0.000000001 && iterations<m_MM_iterations)
 	{
-		cout<<"norm: "<<m_norm<<"iterations: "<<iterations<<endl;
+		//cout<<"norm: "<<m_norm<<"iterations: "<<iterations<<endl;
 		//PRIMERA PARTE
 		iterations++;
 
@@ -513,7 +514,7 @@ inline int CPlackettLuceModel::Sample(CPopulation * population, int num_samples,
                 }
             }
 
-            randVal=drand48()*acumul_aux;
+            randVal=rand()*acumul_aux;
             //randVal=(double)rand()/(((double)RAND_MAX/acumul_aux));
             acumul=distribution[0];
             for(k=1;(k<remaining && acumul<randVal);k++)
@@ -531,6 +532,48 @@ inline int CPlackettLuceModel::Sample(CPopulation * population, int num_samples,
             population->AddToPopulation(m_sampling_permutation, samples, problem->Evaluate(m_sampling_permutation));
     }
     return num_samples;
+}
+
+#/*
+ * Samples the plackett-luce model learnt.
+ */
+void CPlackettLuceModel::Sample(int *permutation)
+{
+	int i, j, k, remaining, pos, samples;
+	double randVal, acumul, acumul_aux;
+
+	for (i = 0; i<m_problem_size; i++) m_located[i] = 0;
+	for (i = 0; i<m_problem_size; i++)
+	{
+
+		//get ready data
+		remaining = m_problem_size - i;
+		acumul_aux = 0;
+		pos = 0;
+		for (j = 0; j<m_problem_size; j++)
+		{
+			if (m_located[j] == 0)//permutation[j]==-1)
+			{
+				distribution[pos] = m_weights[j];
+				acumul_aux += m_weights[j];
+				objects[pos] = j;
+				pos++;
+			}
+		}
+
+		//randVal = rand()*acumul_aux;
+		randVal=(double)rand()/(((double)RAND_MAX/acumul_aux));
+		acumul = distribution[0];
+		for (k = 1; (k<remaining && acumul<randVal); k++)
+		{
+			acumul += distribution[k];
+		}
+		k--;
+
+		permutation[i] = objects[k];
+		m_located[objects[k]] = 1;
+	}
+
 }
 
 /*
@@ -552,7 +595,7 @@ void CPlackettLuceModel::PostProcesses()
 /*
  * Returns the probability of the 'indiv' individual for Plackett-Luce model.
  */
-double CPlackettLuceModel::Probability(int * indiv)
+float CPlackettLuceModel::Probability(int * indiv)
 {
     double probability=1;
     double aux,aux2;
@@ -581,9 +624,17 @@ void CPlackettLuceModel::CalculateMostProbableSolution()
     //Invert
     for(int i=0; i<m_problem_size; i++) m_mostProbable->Genes()[m_aux1[i]]=i;
     
-    m_mostProbable->SetValue(MIN_INTEGER);
+    m_mostProbable->SetValue(INT_MIN);
 }
 
+void CPlackettLuceModel::printWeigths() {
+	double sum = 0;
+	for (int i = 0; i < m_problem_size; i++) {
+		cout << "w" << i << ":" << m_weights[i] << endl;
+		sum += m_weights[i];
+	}
+	cout << "Sum: " << sum << endl;
+}
 
 /*
  * Returns the most probable solution given the vector of weights

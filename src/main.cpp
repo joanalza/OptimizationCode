@@ -8,6 +8,7 @@
 //#include <sys/time.h>
 #include <iostream>
 #include <iomanip>
+#include "PlackettLuce.h"
 #include "RankingEDA.h"
 #include "InfiniteRankingEDA.h"
 #include "PBP.h"
@@ -296,6 +297,7 @@ PBP * GetProblemInfo(string problemType, string filename, string dynamicfilename
     
     //Read the instance.
     int problem_size= problem->Read(filename);
+	problem->setPbsize(problem_size);
 	problem->setIdentityPermutationChanges(dynamicfilename);
     PROBLEM_SIZE=problem_size;
     
@@ -334,7 +336,7 @@ int main(int argc, char * argv[])
 	PROBLEM = GetProblemInfo(PROBLEM_TYPE,INSTANCE_FILENAME, DYNAMIC_FILENAME);
  //   MAX_EVALUATIONS=PROBLEM_SIZE*PROBLEM_SIZE*1000;
 	//MAX_EVALUATIONS = 50000;
-	MAX_EVALUATIONS = 350000;//44142430;//47175960;//44142430; //220712150
+	MAX_EVALUATIONS = 1000 * pow(PROBLEM_SIZE, 2); //25000;//44142430;//47175960;//44142430; //220712150
     
     //Create the file to store the results.
     ofstream output_file;

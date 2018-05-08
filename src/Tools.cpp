@@ -11,6 +11,9 @@
 #include <math.h>
 //#include <sys/time.h>
 #include "Variables.h"
+#include <stdint.h>
+#include <float.h>
+#include <climits>
 
 /*
  * It determines if the given int sequecen if it is indeed a permutation or not.
