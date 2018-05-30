@@ -414,7 +414,7 @@ bool CPlackettLuceModel::LearnMM(CPopulation * population, int sel_total)
 	m_norm=1;
 
 	//cout<<"Starting MM algorithm...."<<endl;
-	while(m_norm>0.000000001 && iterations<m_MM_iterations)
+	while(m_norm>0.001 && iterations<m_MM_iterations)
 	{
 		//cout<<"norm: "<<m_norm<<"iterations: "<<iterations<<endl;
 		//PRIMERA PARTE
@@ -611,6 +611,19 @@ float CPlackettLuceModel::Probability(int * indiv)
         }
     
 	return probability;
+}
+
+void CPlackettLuceModel::GibbsWeigths(float t) {
+	float * abilities = new float[m_problem_size];
+	float sum = 0;
+	for (int i = 0; i < m_problem_size; i++) {
+		abilities[i] = log(m_weights[i]);
+		sum += exp(abilities[i] / t);
+	}
+	for (int i = 0; i < m_problem_size; i++) {
+		m_weights[i] = (exp(abilities[i] / t))/(sum);
+	}
+	delete[] abilities;
 }
 
 

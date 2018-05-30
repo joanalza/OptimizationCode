@@ -67,6 +67,12 @@ public:
     void PostProcesses();
 
 	void printWeigths();
+
+	/*
+	 * This method is proposed for the dynamic problems with the aim of reacting properly to a change.
+	 */
+	void GibbsWeigths(float t);
+
     
 private:
     

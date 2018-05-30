@@ -95,6 +95,9 @@ public:
      */
     int m_inverse;
 
+	// Average of the population
+	float m_average;
+
 	// Path of the progress of the EDA.
 	string m_resultsPath;
     
@@ -121,7 +124,8 @@ public:
     /*
      * Running function
      */
-	int Run();
+
+	int Run(char *results);
     /*
      * Returns the number of performed evaluations.
      */

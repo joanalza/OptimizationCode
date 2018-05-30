@@ -57,7 +57,13 @@ public:
      * Size of the population of offsprings
      */
     int m_offspring_size;
+
+	/*
+	 * Sum of all the fitness of the population
+	 */
     
+	long int m_all_fitness;
+
 	/*
      * The constructor. It creates an empty list.
      */
@@ -98,8 +104,8 @@ public:
     /*
      * Calculates the average fitness of the first 'size' solutions in the population
      */
-    float AverageFitnessPopulation(int size);
-	
+    float AverageFitnessPopulation();
+
 private:
     
 };

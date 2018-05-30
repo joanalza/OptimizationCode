@@ -32,7 +32,7 @@ RankingEDA::RankingEDA(PBP * problem, int problem_size, long int max_evaluations
 	//cout << "initial m_best value: " << m_best->Value() << endl;
     m_pop_size = m_problem_size * 10;
     m_sel_size = m_problem_size;
-    m_offspring_size = m_pop_size;
+    m_offspring_size = m_pop_size - 1;
     memcpy(m_metric_type, metric_type, sizeof(char)*10);
     memcpy(m_model_type, model_type, sizeof(char)*10);
     
@@ -52,6 +52,7 @@ RankingEDA::RankingEDA(PBP * problem, int problem_size, long int max_evaluations
     }
     
     m_population->SortPopulation(0);
+	m_average = m_population->AverageFitnessPopulation();
 
 	m_best->SetGenes(m_population->m_individuals[0]->Genes());
 	m_best->SetValue(m_population->m_individuals[0]->Value());
@@ -68,8 +69,6 @@ RankingEDA::RankingEDA(PBP * problem, int problem_size, long int max_evaluations
     }else if (((string)model_type)=="PL"){
         m_model=new CPlackettLuceModel(m_problem_size, m_sel_size);
     }
- 
-	m_resultsPath = "results/progress-GM.csv";
     
 }
 
@@ -164,9 +163,11 @@ void RankingEDA::MetricSuitability_Experiment(char * results_file){
 
 
 
-int RankingEDA::Run(){
-	string results1 = "FileName \t Solution \tFitness \t err \t FEs \n";
-	string resultsCsv = "gen,fes,bestFit,avgFit,bestFound,change,changeGen,bestPerChange\n";
+int RankingEDA::Run(char *results){
+
+	m_resultsPath = results;
+//	string results1 = "FileName \t Solution \tFitness \t err \t FEs \n";
+	string resultsCsv = "gen,fes,bestFit,avgFit,bestFound,rate,change,changeGen,bestPerChange\n";
 	/*long temp = LONG_MIN;
 	cout << "temp1" << temp << endl;
 	m_best->SetValue(temp);*/
@@ -181,7 +182,11 @@ int RankingEDA::Run(){
     int * genes= new int[m_problem_size];
 
     int iterations = 1, changeGen = 1;
-    float rate=0.001, average;
+    float gibbs = 1, lastAverage = 0, rate = 0.001; // FOR GM AND MM
+
+	float diversity = 0;
+
+	float modification = rate;
 
 	CIndividual *bestChange = new CIndividual(m_problem_size);
 	bestChange->SetGenes(m_population->m_individuals[0]->Genes());
@@ -190,89 +195,82 @@ int RankingEDA::Run(){
 
     //EDA iteration. Stopping criterion is the maximum number of evaluations performed
     while (m_evaluations<m_max_evaluations){
-		cout << "m_max_evaluations: "<< m_max_evaluations << endl;
-		cout << "m_evaluations: " << m_evaluations << endl;
+//		cout << "m_max_evaluations: "<< m_max_evaluations << endl;
+//		cout << "m_evaluations: " << m_evaluations << endl;
+		cout << "Generation: " << iterations << endl;
+
 		bool hasChangedOccured = m_problem->changeIdentityPermutation(m_evaluations, m_max_evaluations);
 		if (hasChangedOccured) {
 			// Re-evaluate population fitness
 			for (int i = 0; i<m_pop_size; i++) {
 				m_population->SetToPopulation(m_population->m_individuals[i]->Genes(), i, m_problem->Evaluate(m_population->m_individuals[i]->Genes()));
-
 			}
+
 			iChange++;
 			changeGen = 1;
 
-			m_population->SortPopulation(1);
-			
-//			m_best->SetGenes(m_population->m_individuals[0]->Genes());
-//			m_best->SetValue(m_population->m_individuals[0]->Value());
-
+			m_population->SortPopulation(0);
+			m_average = m_population->AverageFitnessPopulation();
+						
 			bestChange->SetGenes(m_population->m_individuals[0]->Genes());
 			bestChange->SetValue(m_population->m_individuals[0]->Value());
 
 		}
-		//average of the population
-		average = m_population->AverageFitnessPopulation(m_pop_size);
 
-		cout << "POPULATION:" << endl;
-		m_population->Print();
-
-		//results1 += iterations + "," + m_evaluations + "," +newScore + "," + average + "," + m_best->Value() + "," iChange + "," + changeGen + "\n";
-		if (((string)m_model_type) == "PL") {
-			resultsCsv += to_string(static_cast<long long>(iterations)) + "," + to_string(static_cast<long long>(m_evaluations)) + "," +
-				std::to_string(static_cast<long double>((-1) * newScore)) + "," +
-				std::to_string(static_cast<long double>((-1) * average)) + "," +
-				std::to_string(static_cast<long double>((-1) * m_best->Value())) + "," +
-				to_string(static_cast<long long>(iChange)) + "," +
-				to_string(static_cast<long long>(changeGen)) + "," +
-				std::to_string(static_cast<long double>((-1) * bestChange->Value())) + "\n";
-		}
+		/*cout << "Average: " << m_average << endl;
+		cout << "Last average: " << lastAverage << endl;*/
 
         //learn model
-		cout << "LEARNING" << endl;
         m_model->Learn(m_population, m_sel_size);
 
-		/*if (((string)m_model_type) == "PL") {
+		// John's method for the dynamic problems
+		if (((string)m_model_type) == "PL") {
+			if (lastAverage != 0){
+				//gibbs = m_average / lastAverage;
+				gibbs = pow(m_average / bestChange->Value(), 3);
+			}
+			cout << "GIBBS: " << gibbs << endl;
+			((CPlackettLuceModel*)m_model)->GibbsWeigths(gibbs);
+		}
+		/*if ( ((string)m_model_type) == "PL" ) {
 			((CPlackettLuceModel*)m_model)->printWeigths();
 		}*/
 
+		
         //sample the model.
-		cout << "SAMPLING" << endl;
+		lastAverage = m_average;
         for (i=0; i< m_offspring_size && m_evaluations<m_max_evaluations; i++){
             //distance at which the sampled solution is from the consensus ranking.
-            
-            
             m_model->Sample(genes);
-			/*PrintArray(genes, m_problem_size, "SAMPLE: ");
-			if (isPermutation(genes, m_problem_size)) {
-				cout << "TRUE" <<endl;
-			}else {
-				cout << "FALSE" << endl;
-			}*/
            if (m_inverse)
                 m_population->AddToPopulation(genes, i, m_problem->EvaluateInv(genes));
             else
                 m_population->AddToPopulation(genes, i, m_problem->Evaluate(genes));
             m_evaluations++;
         }
-
         
         //update the model.
         m_population->SortPopulation(1);
-
+		m_average = m_population->AverageFitnessPopulation();
 
         //update indicators
 		lastScore = newScore;
         newScore = m_population->m_individuals[0]->Value();
-        float modification = 0;
+
+		// Calculation of the best scores of the population
 		if ( newScore > lastScore) {
 			bestChange->SetGenes(m_population->m_individuals[0]->Genes());
 			bestChange->SetValue(m_population->m_individuals[0]->Value());
-		}
+			//gibbs = 1;
+		}/*else if (newScore < lastScore) {
+			gibbs = log((lastScore - newScore));
+		}else {
+			gibbs += 0.01;
+		}*/
+
         if (newScore > m_best->Value()){
 			//results1 = "./test-output/" + "\t" + std::to_string(static_cast<long double>(newScore)) + "\t" + "0" + "\t" + to_string(static_cast<long long>(m_evaluations)) + "\n"; // ##C++0x
-			cout << m_evaluations << "; " << newScore << endl;
-
+			//cout << m_evaluations << "; " << newScore << endl;
 
             m_best->SetGenes(m_population->m_individuals[0]->Genes());
             m_best->SetValue(newScore);
@@ -281,8 +279,8 @@ int RankingEDA::Run(){
         }else{
             modification = rate;
         }
-    
 
+		// Update of the values of the model
         if (((string)m_model_type)=="M"){
             ((CMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound = ((CMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound+modification;
             if (((CMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound < 0.001)
@@ -292,6 +290,19 @@ int RankingEDA::Run(){
             if (((CGeneralizedMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound < 0.001)
             ((CGeneralizedMallowsModel*)m_model)->m_distance_model->m_lower_theta_bound = 0.001;
         }
+
+		// Store the progress information
+		if (((string)m_model_type) == "PL") {
+			resultsCsv += to_string(static_cast<long long>(iterations)) + "," +
+				to_string(static_cast<long long>(m_evaluations)) + "," +
+				std::to_string(static_cast<long double>((-1) * newScore)) + "," +
+				std::to_string(static_cast<long double>((-1) * m_average)) + "," +
+				std::to_string(static_cast<long double>((-1) * m_best->Value())) + "," +
+				std::to_string(static_cast<long double>(gibbs)) + "," +
+				to_string(static_cast<long long>(iChange)) + "," +
+				to_string(static_cast<long long>(changeGen)) + "," +
+				std::to_string(static_cast<long double>((-1) * bestChange->Value())) + "\n";
+		}
        
 		//cout << "m_evaluations: " << m_evaluations << "m_best: " << m_best->Value() << "newScore: " << newScore  <<   endl;
         iterations++;
@@ -299,10 +310,9 @@ int RankingEDA::Run(){
 
     }
 
+	// Write the progress information
 	ofstream myfile1;
 	myfile1.open(m_resultsPath);
-	//	myfile1 << results1;
-	//	cout << results << endl;
 	myfile1 << resultsCsv;
 	myfile1.close();
 

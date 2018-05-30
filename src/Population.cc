@@ -23,6 +23,7 @@ CPopulation::CPopulation(int pop_size, int offspring_size, int individual_size)
     m_offspring_size=offspring_size;
     m_size=pop_size+offspring_size;
     m_individuals.resize(m_size);
+	m_all_fitness = 0;
     
     //Initialize population with empty solutions
     for (int i=0;i<m_size;i++)
@@ -51,6 +52,7 @@ void CPopulation::AddToPopulation(int * genes, int index, long int fitness)
 {
     m_individuals[m_pop_size+index]->SetGenes(genes);
     m_individuals[m_pop_size+index]->SetValue(fitness);
+	m_all_fitness += fitness;
 }
 
 /*
@@ -60,6 +62,7 @@ void CPopulation::SetToPopulation(int * genes, int index, long int fitness)
 {
     m_individuals[index]->SetGenes(genes);
     m_individuals[index]->SetValue(fitness);
+	m_all_fitness += fitness;
 }
 
 
@@ -89,14 +92,14 @@ bool CPopulation::Same(int size)
 /*
  * Calculates the average fitness of the first 'size' solutions in the population
  */
-float CPopulation::AverageFitnessPopulation(int size)
+float CPopulation::AverageFitnessPopulation()
 {
 	float result=0;
-	for(int i=0;i<size;i++)
+	for(int i=0;i<m_pop_size;i++)
     {
         result+=m_individuals[i]->Value();
     }
-    return result/size;
+    return result/ m_pop_size;
     
 }
 
@@ -113,5 +116,3 @@ void CPopulation::SortPopulation(int mode)
     else
         sort(m_individuals.begin(), m_individuals.end(), Better);
 }
-
-

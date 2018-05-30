@@ -8,6 +8,7 @@
 //#include <sys/time.h>
 #include <iostream>
 #include <iomanip>
+#include <string.h>
 #include "PlackettLuce.h"
 #include "RankingEDA.h"
 #include "InfiniteRankingEDA.h"
@@ -44,7 +45,7 @@ long int CONVERGENCE_EVALUATIONS = 0;
 long int MAX_EVALUATIONS = 0;
 
 // Name of the file where the result will be stored.
-char RESULTS_FILENAME[50];
+char RESULTS_FILENAME[100];
 
 // Name of the file where the instances is stored.
 char INSTANCE_FILENAME[50];
@@ -54,6 +55,9 @@ int SEED;
 
 //Determines if a solution needs to be inverted before evaluating.
 int INVERSE;
+
+// The rate asigned for a change process
+float RATE;
 
 // Name of the file where the instances is stored.
 char DYNAMIC_FILENAME[100];
@@ -171,7 +175,7 @@ void usage(char *progname)
     cout <<"   -t problem_type (TSP, QAP, LOP, PFSP or API).\n"<<endl;
     cout <<"   -m model_type (M (Mallows), GM (Generalized Mallows)).\n"<<endl;
     cout <<"   -d metric (K (Kendall), C (Cayley), U (Ulam)).\n"<<endl;
-    cout <<"   -v inverse (0<- no inverse, 1<- inverse)."<<endl;
+    cout <<"   -v inverse (0<- no inverse, 1<- inverse).\n"<<endl;
 	cout <<"   -p Dynamic profile file name." << endl;
 }
 
@@ -189,7 +193,7 @@ bool GetParameters(int argc,char * argv[])
     }
 	char** optarg;
 	optarg = new char*[argc];
-    while ((c = GetOption (argc, argv, "s:h:t:o:i:m:d:v:p:",optarg)) != '\0')
+    while ((c = GetOption (argc, argv, "s:h:t:o:i:m:d:v:p:r:",optarg)) != '\0')
     {
     	switch (c)
     	{
@@ -230,6 +234,11 @@ bool GetParameters(int argc,char * argv[])
 			case 'p':
 				strcpy(DYNAMIC_FILENAME, *optarg);
 				break;
+
+			case 'r':
+				RATE = atof(*optarg);
+				break;
+
         }
     }
 
@@ -326,7 +335,7 @@ int main(int argc, char * argv[])
 	if(!GetParameters(argc,argv)) return -1;
 
     //Set seed
-    srand(SEED*1000);
+    srand(SEED); //srand(SEED * 1000);
     
     cout.precision(10);
     //Read the problem instance to optimize.
@@ -339,9 +348,9 @@ int main(int argc, char * argv[])
 	MAX_EVALUATIONS = 1000 * pow(PROBLEM_SIZE, 2); //25000;//44142430;//47175960;//44142430; //220712150
     
     //Create the file to store the results.
-    ofstream output_file;
+    /*ofstream output_file;
     output_file.open(RESULTS_FILENAME);
-    output_file.close();
+    output_file.close();*/
 
     //Initialize the algorithm
     //cout<<"Ranking EDA..."<<endl;
@@ -359,11 +368,11 @@ int main(int argc, char * argv[])
 		//int* testperm = new int[20]{ 2,16,14,7,8,7,4,13,15,6,10,12,17,18,0,3,1,9,19,11 };
 	//	cout << "fit-test: "<< PROBLEM->Evaluate(testperm) <<endl;
 
-		alg->Run();
+		alg->Run(RESULTS_FILENAME);
         
     
     
-    
+    /*
     //Get best solution fitness and the number of evaluations performed.
     int evaluations = alg->GetPerformedEvaluations();
     CIndividual * best = alg->GetBestSolution();
@@ -375,15 +384,16 @@ int main(int argc, char * argv[])
     //double t2=tim.tv_sec+(tim.tv_usec/1000000.0);
 
     //Print results
-    /*if (IsAPI(PROBLEM_TYPE)==1)
+    if (IsAPI(PROBLEM_TYPE)==1)
             WriteResults(best->Value(),best->Genes(),evaluations,t2-t1,dist);
         else
-            WriteResults(best->Value(),best->Genes(),evaluations,t2-t1);*/
+            WriteResults(best->Value(),best->Genes(),evaluations,t2-t1);
 	if (IsAPI(PROBLEM_TYPE) == 1)
 		WriteResults(best->Value(), best->Genes(), evaluations, 0, dist);
 	else
 		WriteResults(best->Value(), best->Genes(), evaluations, 0);
         delete alg;
+	*/
     }
     return 0;
 }
